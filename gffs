@@ -1,0 +1,98 @@
+#!/usr/bin/python3
+import urllib
+import requests
+from bs4 import BeautifulSoup
+from sys import argv
+import os
+
+#argparse is bloat
+# desktop user-agent
+USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:65.0) Gecko/20100101 Firefox/65.0"
+
+def get_pages(url):
+    #under construction
+    return 10 
+
+def proceed(url, debug=False):
+    headers = {"user-agent": USER_AGENT}
+    resp = requests.get(url, headers=headers)
+    if resp.status_code == 200:
+        results = []
+        soup = BeautifulSoup(resp.text, 'lxml')
+        links = soup.findAll('a')
+        for _ in links:
+            val = _.get('href')
+            if val is None:
+                continue
+            if 'http' not in val and 'https' not in val:
+                continue
+            results.append(val)
+        return results
+    else:
+        print("error! status code " + str(resp.status_code))
+        print("press ctrl and click " + "https://google.com/search?q=requests+" + str(resp.status_code))
+        exit(1)
+
+#just a link to site inside file
+#use wget -i to download crutch file
+def crutch(url, path):
+    fname = url[url.rindex('/'):]
+    with open(path + fname, 'w') as f:
+        f.write(url+fname)
+    
+
+def main():
+    if len(argv) < 2:
+        print("oh come on")
+        exit(0)
+    query = argv[1]
+    query = query.replace(' ', '+')
+    URL = f"https://google.com/search?q={query}"
+    results = proceed(URL)
+    if '--all-pages' in argv:
+        for _ in range(1, get_pages(URL)):
+            Url = URL + "+start=" + str(_ * 10)
+            results.extend(proceed(Url))
+    if '--nogoog' in argv:
+        ret = []
+        for _ in results:
+            if 'google' in _:
+                continue
+            else:
+                ret.append(_)
+        results = ret
+    if '--plain' in argv:
+            for _ in results:
+                print (_)
+    #add here a way to shoose a path 
+    elif '-f' in argv:
+            try:
+                directory = argv[argv.index('-f') + 1]
+            except:
+                directory = str() 
+            directory += str(argv[1] + '/')
+            print(directory)
+            print('Writing to ' + directory + argv[1])
+            try: 
+                os.mkdir(directory)
+                for _ in results:
+                    print(_)
+                    if _[:-1] == '/':
+                        print(_ + "is not a file, ignoring")
+                    else:
+                        _dir = directory + _[_.find('//:'):_.rindex('/')]
+                        print(_dir)
+                        try:
+                            os.mkdir(_dir)
+                        except OSError:
+                            pass
+                        crutch(_, _dir)
+            except Exception as e:
+                   print("cant access "+ directory + " =(")
+                   print(str(e))
+    else:
+        print(results)
+
+if __name__ == "__main__":
+    main()
+
